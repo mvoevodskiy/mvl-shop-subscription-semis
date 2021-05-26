@@ -1,12 +1,13 @@
 {
   "name": "mvl-shop-subscription-semis",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "",
   "main": "src/subscription.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
+    "luxon": "^1.25.0",
     "mvloader": "^1.0.8",
     "mvtools": "^1.0.19",
     "mvl-db-handler": "^1.0.7"
