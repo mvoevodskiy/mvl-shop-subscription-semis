@@ -1,4 +1,5 @@
 const { MVLoaderBase } = require('mvloader')
+const { DateTime } = require('luxon')
 
 class mvlShopSubscriptionController extends MVLoaderBase {
   constructor (App, ...config) {
@@ -37,20 +38,22 @@ class mvlShopSubscriptionController extends MVLoaderBase {
       order = await this.App.ext.controllers.mvlShopOrder.get(order)
       const res = await next({ order, status })
       status = await order.getStatus()
-      if (this.config.statuses.paid.indexOf(status.key) !== -1) {
+      if (status !== null && this.config.statuses.paid.indexOf(status.key) !== -1) {
         await this.paidOrder(order)
       }
       return res
     }
 
     this.paidOrder = async (order) => {
+      if (await this.App.DB.models.mvlShopSubscription.count({ where: { OrderId: order.id } })) return
       const goods = await order.getGoods()
+      const i = 0
       for (const good of goods) {
         const product = await good.getProduct()
         if (product) {
           const sProducts = await product.getSubscriptionProducts()
           for (const sProduct of sProducts) {
-            const curSubscription = await this.App.DB.models.mvlShopSubscription.scope(['active']).findOne({
+            const curSubscription = await this.App.DB.models.mvlShopSubscription.scope(['payedFuture']).findOne({
               where: {
                 UserId: order.CustomerId
               },
@@ -58,16 +61,18 @@ class mvlShopSubscriptionController extends MVLoaderBase {
               logging: console.log
             })
             console.log(sProduct.get())
-            let start = new Date()
-            let until = new Date()
+            let start = DateTime.local()
+            let until = DateTime.local()
             if (curSubscription !== null) {
-              start = new Date(curSubscription.get('until'))
-              until = new Date(curSubscription.get('until'))
+              start = DateTime.fromJSDate(curSubscription.get('until'))
+              until = DateTime.fromJSDate(curSubscription.get('until'))
             }
-            until.setSeconds(until.getSeconds() + sProduct.duration)
+            // console.log('SUBSCRIPTION PRODUCT. DURATION', sProduct.duration, sProduct.get('duration'))
+            // until.plus(sProduct.duration)
+            // until.setSeconds(until.getSeconds() + sProduct.duration)
             await this.App.DB.models.mvlShopSubscription.create({
-              start: start.toISOString(),
-              until: until.toISOString(),
+              start: start.toISO(),
+              until: until.plus(sProduct.duration).toISO(),
               name: sProduct.name,
               UserId: order.CustomerId,
               SubscriptionProductId: sProduct.id,
