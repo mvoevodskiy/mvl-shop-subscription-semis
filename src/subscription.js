@@ -22,6 +22,7 @@ mvlShopSubscription.exportConfig = {
       semis: {},
       controllers: {
         mvlShopSubscription: require('./controllers/subscriptioncontroller'),
+        mvlShopSubscriptionEnding: require('./controllers/endingcontroller'),
         mvlShopSubscriptionOverride: require('./controllers/overridecontroller')
       },
       handlers: {}
