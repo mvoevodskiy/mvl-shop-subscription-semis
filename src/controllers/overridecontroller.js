@@ -23,10 +23,10 @@ class OverrideController extends MVLoaderBase {
       foreignKey: 'UserId',
       scope: 'active'
     })
-    models.mvlShopProduct.hasMany(models.mvlShopSubscriptionProduct, {
-      as: 'SubscriptionProducts',
-      foreignKey: 'ProductId'
-    })
+    // models.mvlShopProduct.hasMany(models.mvlShopSubscriptionProduct, {
+    //   as: 'SubscriptionProducts',
+    //   foreignKey: 'ProductId'
+    // })
     models.mvlShopOrder.hasMany(models.mvlShopSubscription, {
       as: 'Subscriptions',
       foreignKey: 'OrderId'

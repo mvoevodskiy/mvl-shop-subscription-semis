@@ -31,28 +31,25 @@ module.exports = (Sequelize) => {
           }
         },
         payedFuture: {
+          attributes: ['id', 'name', 'start', 'delayUntil', 'active', 'ProductId', 'ProductModId', 'OrderId', 'OrderProductId', [Sequelize.fn('MAX', Sequelize.col('until')), 'until']],
           where: {
             active: true,
             until: {
               [Sequelize.Op.gt]: Sequelize.fn('now')
             }
-          }
-        },
-        onetime: {
-          include: [
-            {
-              model: 'mvlShopSubscriptionProduct',
-              as: 'SubscriptionProduct',
-              where: {
-                onetime: true
-              }
-            }
-          ]
+          },
+          group: ['UserId', 'ProductId'],
+          // having: Sequelize.fn('MAX', Sequelize.col('until'))
         },
         desc: {
           order: [['until', 'DESC']]
         }
-      }
+      },
+      indexes: [
+        {
+          fields: ['until']
+        }
+      ]
     },
     // Model associations
     {
@@ -60,6 +57,10 @@ module.exports = (Sequelize) => {
         {
           model: 'mvlShopProduct',
           as: 'Product'
+        },
+        {
+          model: 'mvlShopProductMod',
+          as: 'ProductMod'
         },
         {
           model: 'mvlShopOrder',
@@ -72,10 +73,6 @@ module.exports = (Sequelize) => {
         {
           model: 'mvlUser',
           as: 'User'
-        },
-        {
-          model: 'mvlShopSubscriptionProduct',
-          as: 'SubscriptionProduct'
         }
       ]
     }

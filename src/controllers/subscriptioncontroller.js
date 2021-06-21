@@ -1,5 +1,6 @@
 const { MVLoaderBase } = require('mvloader')
 const { DateTime } = require('luxon')
+const mt = require('mvtools')
 
 class mvlShopSubscriptionController extends MVLoaderBase {
   constructor (App, ...config) {
@@ -16,22 +17,23 @@ class mvlShopSubscriptionController extends MVLoaderBase {
     this.caption = this.constructor.name
 
     this.submitOrder = (orderController) => (next) => async (cartOrCustomerId, customerId, orderData = undefined) => {
-      const cart = await this.App.ext.controllers.mvlShopCart.get(cartOrCustomerId)
-      const productIds = []
-      for (const key in cart.goods) {
-        if (Object.prototype.hasOwnProperty.call(cart.goods, key)) {
-          productIds.push(cart.goods[key].productId)
-        }
-      }
-      const onceUsed = await this.App.DB.models.mvlShopSubscription.scope('onetime').count({
-        where: {
-          UserId: cart.CustomerId,
-          ProductId: productIds
-        }
-      })
-      const subscriptionProducts = await this.App.DB.models.mvlShopSubscription.count({ where: { ProductId: productIds } })
-      if (!subscriptionProducts || (subscriptionProducts && onceUsed === 0)) return next(cartOrCustomerId, customerId, orderData)
-      else return this.failure('Can\'t create order. One-time subscription was used')
+      return next(cartOrCustomerId, customerId, orderData)
+      // const cart = await this.App.ext.controllers.mvlShopCart.get(cartOrCustomerId)
+      // const productIds = []
+      // for (const key in cart.goods) {
+      //   if (Object.prototype.hasOwnProperty.call(cart.goods, key)) {
+      //     productIds.push(cart.goods[key].productId)
+      //   }
+      // }
+      // const onceUsed = await this.App.DB.models.mvlShopSubscription.scope('onetime').count({
+      //   where: {
+      //     UserId: cart.CustomerId,
+      //     ProductId: productIds
+      //   }
+      // })
+      // const subscriptionProducts = await this.App.DB.models.mvlShopSubscription.count({ where: { ProductId: productIds } })
+      // if (!subscriptionProducts || (subscriptionProducts && onceUsed === 0)) return next(cartOrCustomerId, customerId, orderData)
+      // else return this.failure('Can\'t create order. One-time subscription was used')
     }
 
     this.changeStatus = (statusController) => (next) => async ({ order, status }) => {
@@ -46,43 +48,54 @@ class mvlShopSubscriptionController extends MVLoaderBase {
 
     this.paidOrder = async (order) => {
       if (await this.App.DB.models.mvlShopSubscription.count({ where: { OrderId: order.id } })) return
+      const subscriptions = []
       const goods = await order.getGoods()
-      const i = 0
       for (const good of goods) {
+        let duration
         const product = await good.getProduct()
-        if (product) {
-          const sProducts = await product.getSubscriptionProducts()
-          for (const sProduct of sProducts) {
-            const curSubscription = await this.App.DB.models.mvlShopSubscription.scope(['payedFuture']).findOne({
-              where: {
-                UserId: order.CustomerId
-              },
-              order: [['until', 'DESC']],
-              logging: console.log
-            })
-            console.log(sProduct.get())
-            let start = DateTime.local()
-            let until = DateTime.local()
-            if (curSubscription !== null) {
-              start = DateTime.fromJSDate(curSubscription.get('until'))
-              until = DateTime.fromJSDate(curSubscription.get('until'))
-            }
-            // console.log('SUBSCRIPTION PRODUCT. DURATION', sProduct.duration, sProduct.get('duration'))
-            // until.plus(sProduct.duration)
-            // until.setSeconds(until.getSeconds() + sProduct.duration)
-            await this.App.DB.models.mvlShopSubscription.create({
-              start: start.toISO(),
-              until: until.plus(sProduct.duration).toISO(),
-              name: sProduct.name,
-              UserId: order.CustomerId,
-              SubscriptionProductId: sProduct.id,
-              OrderId: order.id,
-              OrderProductId: good.id,
-              ProductId: product.id
-            })
+        const mod = await good.getMod()
+        if (mod !== null) {
+          const options = await mod.getOptions({ where: { key: 'duration' } })
+          if (options.length) {
+            duration = options[0].value
           }
         }
+        if (mt.empty(duration)) {
+          const options = await product.getOptions({ where: { key: 'duration' } })
+          if (options.length) {
+            duration = options[0].value
+          }
+        }
+        if (!mt.empty(duration)) {
+          const curSubscription = await this.App.DB.models.mvlShopSubscription.scope(['payedFuture']).findOne({
+            where: {
+              UserId: order.CustomerId,
+              ProductId: product.id,
+              ProductModId: mod !== null ? mod.id : null
+            },
+            logging: console.log
+          })
+          console.log(good.get())
+          let start = DateTime.local()
+          let until = DateTime.local()
+          if (curSubscription !== null) {
+            start = DateTime.fromJSDate(curSubscription.get('until'))
+            until = DateTime.fromJSDate(curSubscription.get('until'))
+          }
+          const subscription = await this.App.DB.models.mvlShopSubscription.create({
+            start: start.toISO(),
+            until: until.plus(duration).toISO(),
+            name: good.name,
+            UserId: order.CustomerId,
+            OrderId: order.id,
+            OrderProductId: good.id,
+            ProductId: product.id,
+            ProductModId: mod !== null ? mod.id : null
+          })
+          subscriptions.push(subscription)
+        }
       }
+      return subscriptions
     }
 
     this.isActive = async ({ subscriptionIds, userIds, productIds }) => {

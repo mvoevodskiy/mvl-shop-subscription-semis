@@ -45,8 +45,7 @@ mvlShopSubscription.exportConfig = {
         DBHandler: {
           sequelize: {},
           models: {
-            mvlShopSubscription: require('./models/subscription'),
-            mvlShopSubscriptionProduct: require('./models/subscriptionproduct')
+            mvlShopSubscription: require('./models/subscription')
           }
         }
       },
