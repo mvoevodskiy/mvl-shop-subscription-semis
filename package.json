@@ -8,9 +8,10 @@
   },
   "dependencies": {
     "luxon": "^1.25.0",
-    "mvloader": "^1.0.8",
-    "mvtools": "^1.0.19",
-    "mvl-db-handler": "^1.0.7"
+    "mvloader": "^1.0.10",
+    "mvtools": "^1.1.2",
+    "mvl-db-handler": "^1.0.8",
+    "mvl-shop-semis": "^1.1.0"
   },
   "devDependencies": {},
   "author": "mvoevodskiy",
